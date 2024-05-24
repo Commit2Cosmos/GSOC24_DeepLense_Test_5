@@ -1,5 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
+from torchvision import transforms as transforms
+
 import numpy as np
 import os
 
@@ -37,45 +39,48 @@ def save_data(train=True):
         prefix = "data/val"
 
 
-    data = np.empty((0, 1, 150, 150), dtype=np.float32)
+    data = []
     labels = []
 
+    trans = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.CenterCrop(104),
+        transforms.Resize((64,64))
+    ])
 
     for (index, folder) in enumerate(FOLDERS):
-        temp = []
-        for file in os.listdir(os.path.join(prefix, folder)):
-            im = np.load(os.path.join(prefix, folder, file))
-            
-            # if transform is not None:
-            #     im = transform(im)
+        for (i, file) in enumerate(os.listdir(os.path.join(prefix, folder))):
 
-            temp.append(im)
+            if i >= 100:
+                break
+
+            im = np.load(os.path.join(prefix, folder, file)).transpose((1, 2, 0))
+            im = trans(im)
+            
+            data.append(im)
             labels.append(index)
 
 
-        data = np.concatenate((data, temp), axis=0)
-
-
-    data = data.transpose((0, 2, 3, 1))
-    labels = np.array(labels, dtype=np.int32)
+    data = torch.stack(data, dim=0)
+    labels = torch.tensor(labels, dtype=torch.int32)
 
 
     if train:
         print("Training data size: " + str(len(data)))
-        np.save('./data/train/data_train', data)
-        np.save('./data/train/labels_train', labels)
+        torch.save(data, './data/train/data_train_small.pt')
+        torch.save(labels, './data/train/labels_train_small.pt')
 
     else:
         print("Testing data size: " + str(len(data)))
-        np.save('./data/val/data_val', data)
-        np.save('./data/val/labels_val', labels)
+        torch.save(data, './data/val/data_val.pt')
+        torch.save(labels, './data/val/labels_val.pt')
 
 
 # save_data(True)
-save_data(False)
+# save_data(False)
 
 
-def get_loader_from_dataset(X: np.ndarray, y: np.ndarray, batch_size: int) -> DataLoader:
+def get_loader_from_filenames(prefix: str, batch_size: int) -> DataLoader:
 
     """
 
@@ -91,12 +96,10 @@ def get_loader_from_dataset(X: np.ndarray, y: np.ndarray, batch_size: int) -> Da
 
     """
 
+    X = torch.load(f"data/{prefix}/data_{prefix}_small.pt")
+    y = torch.load(f"data/{prefix}/labels_{prefix}_small.pt")
 
-    X = torch.from_numpy(X)
-    y = torch.from_numpy(y)
+    X = TensorDataset(X, y)
+    X = DataLoader(X, batch_size=batch_size, shuffle=True)
 
-    # create a TensorDataset object with the tensors and a DataLoader object with the dataset
-    dataset = TensorDataset(X, y)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-    return loader
+    return X

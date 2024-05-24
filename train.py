@@ -1,9 +1,10 @@
 from utils import get_loader_from_dataset
+from models import Lensiformer
 
 import lightning as L
 import torch
 import torch.nn.functional as F
-from torchmetrics import AUC
+from torchmetrics.classification import MulticlassAUROC
 
 import numpy as np
 
@@ -11,12 +12,27 @@ import numpy as np
 
 if __name__ == '__main__':
 
-    class LitDiffusion(L.LightningModule):
-        def __init__(self, model, lr):
+    class LitLensiformer(L.LightningModule):
+        def __init__(self, lr):
             super().__init__()
             self.lr = lr
-            self.model = model
-            self.auc = AUC(num_classes=3, average='macro')
+
+            self.model = Lensiformer(
+                image_size=64,
+                patch_size=32,
+                embed_dim=384,
+                in_channels=1,
+                num_classes=3,
+                num_heads=16,
+                num_hidden_neurons=64,
+                num_hidden_layers=3,
+                transformer_activation=torch.nn.ELU,
+                feedforward_activation=torch.nn.ELU,
+                num_transformer_blocks = 1,
+                device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            )
+
+            self.auc = MulticlassAUROC(num_classes=3)
 
 
         def configure_optimizers(self):
@@ -49,15 +65,14 @@ if __name__ == '__main__':
             return torch.optim.Adam(self.parameters())
         
         
-    p = "./lightning_logs/version_0"
-    diff_model = LitDiffusion()
+    diff_model = LitLensiformer()
     trainer = L.Trainer(max_epochs=20)
 
 
-    X_train = np.load("data/train/data_train")
-    y_train = np.load("data/train/labels_train")
-    X_val = np.load("data/val/data_val")
-    y_val = np.load("data/val/labels_val")
+    X_train = np.load("data/train/data_train.npy")
+    y_train = np.load("data/train/labels_train.npy")
+    X_val = np.load("data/val/data_val.npy")
+    y_val = np.load("data/val/labels_val.npy")
 
     train_loader = get_loader_from_dataset(X_train, y_train, batch_size=2)
     val_loader = get_loader_from_dataset(X_val, y_val, batch_size=2)
