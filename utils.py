@@ -61,7 +61,7 @@ def save_data(train=True):
             labels.append(index)
 
 
-    data = torch.stack(data, dim=0)
+    data = torch.stack(data, dim=0).to(torch.float32)
     labels = torch.tensor(labels, dtype=torch.int32)
 
 
@@ -72,8 +72,8 @@ def save_data(train=True):
 
     else:
         print("Testing data size: " + str(len(data)))
-        torch.save(data, './data/val/data_val.pt')
-        torch.save(labels, './data/val/labels_val.pt')
+        torch.save(data, './data/val/data_val_small.pt')
+        torch.save(labels, './data/val/labels_val_small.pt')
 
 
 # save_data(True)
@@ -100,6 +100,6 @@ def get_loader_from_filenames(prefix: str, batch_size: int) -> DataLoader:
     y = torch.load(f"data/{prefix}/labels_{prefix}_small.pt")
 
     X = TensorDataset(X, y)
-    X = DataLoader(X, batch_size=batch_size, shuffle=True)
+    X = DataLoader(X, batch_size=batch_size, shuffle=True if prefix=="train" else False, num_workers=4, persistent_workers=True)
 
     return X

@@ -1,10 +1,7 @@
 import torch
-import numpy as np
 from torch import nn
 from torch import Tensor
-from typing import Tuple, Union, List
-import torchvision.transforms as transforms
-from models import FeedForward, TransformerLSABlock
+from models import TransformerLSABlock
 
 class RelativisticPhysicalInformedEncoder(nn.Module):
     """
@@ -116,7 +113,7 @@ class RelativisticPhysicalInformedEncoder(nn.Module):
         # Create a grid for image coordinates
         x_coordinates = torch.linspace(-self.half_profile_size, self.half_profile_size-1, self.profile_size) * self.pixel_scale
         y_coordinates = torch.linspace(-self.half_profile_size, self.half_profile_size-1, self.profile_size) * self.pixel_scale
-        self.grid_x, self.grid_y = torch.meshgrid(x_coordinates, y_coordinates)
+        self.grid_x, self.grid_y = torch.meshgrid(x_coordinates, y_coordinates, indexing="xy")
         self.flat_grid_x = self.grid_x.flatten().to(self.device)
         self.flat_grid_y = self.grid_y.flatten().to(self.device)
 

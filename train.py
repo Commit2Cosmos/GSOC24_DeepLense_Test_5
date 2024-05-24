@@ -1,4 +1,4 @@
-from utils import get_loader_from_dataset
+from utils import get_loader_from_filenames
 from models import Lensiformer
 
 import lightning as L
@@ -6,14 +6,12 @@ import torch
 import torch.nn.functional as F
 from torchmetrics.classification import MulticlassAUROC
 
-import numpy as np
-
 
 
 if __name__ == '__main__':
 
     class LitLensiformer(L.LightningModule):
-        def __init__(self, lr):
+        def __init__(self, lr=5e-7):
             super().__init__()
             self.lr = lr
 
@@ -29,10 +27,13 @@ if __name__ == '__main__':
                 transformer_activation=torch.nn.ELU,
                 feedforward_activation=torch.nn.ELU,
                 num_transformer_blocks = 1,
-                device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                # device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                device=torch.device("mps" if torch.backends.mps.is_available() else "cpu")
             )
 
             self.auc = MulticlassAUROC(num_classes=3)
+
+            self.save_hyperparameters()
 
 
         def configure_optimizers(self):
@@ -57,24 +58,28 @@ if __name__ == '__main__':
             loss = F.cross_entropy(outputs, y)
             self.log('val_loss', loss)
 
-            auc = self.auc(outputs, y)
-            self.log('val_auc', auc)
+            self.auc.update(outputs, y)
+            
 
-
-        def configure_optimizers(self):
-            return torch.optim.Adam(self.parameters())
+        def on_train_epoch_end(self):
+            val_auc = self.auc.compute()
+            self.log('val_auc', val_auc)
+            self.auc.reset()
         
         
     diff_model = LitLensiformer()
     trainer = L.Trainer(max_epochs=20)
 
 
-    X_train = np.load("data/train/data_train.npy")
-    y_train = np.load("data/train/labels_train.npy")
-    X_val = np.load("data/val/data_val.npy")
-    y_val = np.load("data/val/labels_val.npy")
+    X_train = torch.load("data/train/data_train_small.pt")
+    y_train = torch.load("data/train/labels_train_small.pt")
+    X_val = torch.load("data/val/data_val_small.pt")
+    y_val = torch.load("data/val/labels_val_small.pt")
 
-    train_loader = get_loader_from_dataset(X_train, y_train, batch_size=2)
-    val_loader = get_loader_from_dataset(X_val, y_val, batch_size=2)
+    #* 64 in guide
+    BATCH_SIZE = 4
+
+    train_loader = get_loader_from_filenames("train", batch_size=BATCH_SIZE)
+    val_loader = get_loader_from_filenames("val", batch_size=BATCH_SIZE)
 
     trainer.fit(diff_model, train_loader, val_loader)

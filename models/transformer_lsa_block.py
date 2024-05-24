@@ -1,10 +1,7 @@
 import torch
-import numpy as np
 from torch import nn
-from torch import Tensor
-from typing import Tuple, Union, List
-import torchvision.transforms as transforms
-from models import FeedForward
+from typing import Union
+from models import FeedForward, MultiLocallySelfAttention
 
 class TransformerLSABlock(nn.Module):
 

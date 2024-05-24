@@ -1,9 +1,6 @@
 import torch
-import numpy as np
 from torch import nn
 from torch import Tensor
-from typing import Tuple, Union, List
-import torchvision.transforms as transforms
 
 class MultiLocallySelfAttention(nn.Module):
 

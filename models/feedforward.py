@@ -1,5 +1,4 @@
 from torch import nn, Tensor
-import torch
 
 class FeedForward(nn.Module):
 
