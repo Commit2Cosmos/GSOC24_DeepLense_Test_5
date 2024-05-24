@@ -11,7 +11,7 @@ from torchmetrics.classification import MulticlassAUROC
 if __name__ == '__main__':
 
     class LitLensiformer(L.LightningModule):
-        def __init__(self, lr=5e-7):
+        def __init__(self, lr=5e-7, bs=1):
             super().__init__()
             self.lr = lr
 
@@ -55,20 +55,14 @@ if __name__ == '__main__':
             x, y = batch
             outputs = self.model(x)
 
-            loss = F.cross_entropy(outputs, y)
-            self.log('val_loss', loss)
-
             self.auc.update(outputs, y)
-            
 
-        def on_train_epoch_end(self):
+
+        def on_validation_epoch_end(self):
+            #* AUC
             val_auc = self.auc.compute()
             self.log('val_auc', val_auc)
             self.auc.reset()
-        
-        
-    diff_model = LitLensiformer()
-    trainer = L.Trainer(max_epochs=20)
 
 
     X_train = torch.load("data/train/data_train_small.pt")
@@ -81,5 +75,8 @@ if __name__ == '__main__':
 
     train_loader = get_loader_from_filenames("train", batch_size=BATCH_SIZE)
     val_loader = get_loader_from_filenames("val", batch_size=BATCH_SIZE)
+    
+    lensiformer = LitLensiformer()
+    trainer = L.Trainer(max_epochs=20)
 
-    trainer.fit(diff_model, train_loader, val_loader)
+    trainer.fit(lensiformer, train_loader, val_loader)
