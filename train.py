@@ -2,6 +2,8 @@ from utils import get_loader_from_filenames
 from models import Lensiformer
 
 import lightning as L
+from lightning.pytorch.callbacks import ModelCheckpoint
+
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import MulticlassAUROC
@@ -11,8 +13,8 @@ from torchmetrics.classification import MulticlassAUROC
 if __name__ == '__main__':
 
     class LitLensiformer(L.LightningModule):
-        def __init__(self, lr=5e-7, bs=1):
-            super().__init__()
+        def __init__(self, lr=5e-7, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             self.lr = lr
 
             self.model = Lensiformer(
@@ -23,7 +25,7 @@ if __name__ == '__main__':
                 num_classes=3,
                 num_heads=16,
                 num_hidden_neurons=64,
-                num_hidden_layers=3,
+                num_hidden_layers=1,
                 transformer_activation=torch.nn.ELU,
                 feedforward_activation=torch.nn.ELU,
                 num_transformer_blocks = 1,
@@ -37,7 +39,7 @@ if __name__ == '__main__':
 
 
         def configure_optimizers(self):
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+            optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
             return optimizer
 
 
@@ -46,12 +48,12 @@ if __name__ == '__main__':
             outputs = self.model(x)
 
             loss = F.cross_entropy(outputs, y)
-            self.log('train_loss', loss)
+            self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
             
             return loss
 
 
-        def validation_step(self, batch):
+        def validation_step(self, batch, batch_idx):
             x, y = batch
             outputs = self.model(x)
 
@@ -61,22 +63,38 @@ if __name__ == '__main__':
         def on_validation_epoch_end(self):
             #* AUC
             val_auc = self.auc.compute()
-            self.log('val_auc', val_auc)
+            self.log('val_auc', val_auc, on_step=False, on_epoch=True, prog_bar=True)
             self.auc.reset()
 
 
-    X_train = torch.load("data/train/data_train_small.pt")
-    y_train = torch.load("data/train/labels_train_small.pt")
-    X_val = torch.load("data/val/data_val_small.pt")
-    y_val = torch.load("data/val/labels_val_small.pt")
+
 
     #* 64 in guide
-    BATCH_SIZE = 4
+    BATCH_SIZE = 1
 
     train_loader = get_loader_from_filenames("train", batch_size=BATCH_SIZE)
     val_loader = get_loader_from_filenames("val", batch_size=BATCH_SIZE)
     
-    lensiformer = LitLensiformer()
-    trainer = L.Trainer(max_epochs=20)
 
+    # DST = "/content/drive/MyDrive/GSOC24_DeepLens/results/lightnings_logs_5"
+    DST = 'test_folder'
+    
+    checkpoint_callback = ModelCheckpoint(
+        # dirpath=DST,
+        save_on_train_epoch_end=True,
+        filename='{epoch:02d}-{train_loss:.2f}-{val_auc:.3f}'
+    )
+
+    # metrics_collector = MetricsCollector()
+    # trainer = L.Trainer(max_epochs=0, callbacks=[checkpoint_callback, metrics_collector])
+
+    trainer = L.Trainer(
+        max_epochs=100,
+        log_every_n_steps=BATCH_SIZE,
+        # callbacks=[checkpoint_callback, metrics_collector]
+    )
+
+    lensiformer = LitLensiformer(lr=5e-5)
     trainer.fit(lensiformer, train_loader, val_loader)
+
+    # print(lensiformer.logger)

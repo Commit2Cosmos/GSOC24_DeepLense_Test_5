@@ -51,7 +51,7 @@ def save_data(train=True):
     for (index, folder) in enumerate(FOLDERS):
         for (i, file) in enumerate(os.listdir(os.path.join(prefix, folder))):
 
-            if i >= 100:
+            if i >= 4:
                 break
 
             im = np.load(os.path.join(prefix, folder, file)).transpose((1, 2, 0))
@@ -100,6 +100,7 @@ def get_loader_from_filenames(prefix: str, batch_size: int) -> DataLoader:
     y = torch.load(f"data/{prefix}/labels_{prefix}_small.pt")
 
     X = TensorDataset(X, y)
-    X = DataLoader(X, batch_size=batch_size, shuffle=True if prefix=="train" else False, num_workers=4, persistent_workers=True)
+    # X = DataLoader(X, batch_size=batch_size, shuffle=True if prefix=="train" else False, num_workers=4, persistent_workers=True)
+    X = DataLoader(X, batch_size=batch_size, shuffle=False, num_workers=4, persistent_workers=True)
 
     return X
