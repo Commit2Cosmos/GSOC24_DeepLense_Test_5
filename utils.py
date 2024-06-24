@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms as transforms
+from safetensors.torch import save_file, load_file
 
 import numpy as np
 import os
@@ -31,6 +32,14 @@ def count_parameters(model: torch.nn.Module) -> int:
 
 def save_data(train=True):
 
+    """
+    Saves data for training or testing.
+    Args:
+        train (bool, optional): Whether to save data for training or testing. Defaults to True.
+    Returns:
+        None
+    """
+
     FOLDERS = ('no', 'sphere', 'vort')
 
     if train:
@@ -51,7 +60,7 @@ def save_data(train=True):
     for (index, folder) in enumerate(FOLDERS):
         for (i, file) in enumerate(os.listdir(os.path.join(prefix, folder))):
 
-            if i >= 4:
+            if i >= 10:
                 break
 
             im = np.load(os.path.join(prefix, folder, file)).transpose((1, 2, 0))
@@ -67,13 +76,11 @@ def save_data(train=True):
 
     if train:
         print("Training data size: " + str(len(data)))
-        torch.save(data, './data/train/data_train_small.pt')
-        torch.save(labels, './data/train/labels_train_small.pt')
+        save_file({"data": data, "labels": labels}, './data/train/data_train_small.safetensors')
 
     else:
         print("Testing data size: " + str(len(data)))
-        torch.save(data, './data/val/data_val_small.pt')
-        torch.save(labels, './data/val/labels_val_small.pt')
+        save_file({"data": data, "labels": labels}, './data/val/data_val_small.safetensors')
 
 
 # save_data(True)
@@ -84,23 +91,21 @@ def get_loader_from_filenames(prefix: str, batch_size: int) -> DataLoader:
 
     """
 
-    Creates a DataLoader object from numpy arrays containing images and labels.
+    Creates a DataLoader object from files containing images and labels.
 
     Args:
-        X (np.ndarray): numpy array containing the images.
-        y (np.ndarray): numpy array containing the labels.
+        prefix (str): prefix of the files to load.
         batch_size (int): size of the batches to use in the DataLoader.
 
     Returns:
         DataLoader: the created DataLoader object.
 
     """
-
-    X = torch.load(f"data/{prefix}/data_{prefix}_small.pt")
-    y = torch.load(f"data/{prefix}/labels_{prefix}_small.pt")
+    
+    X, y = map(lambda key: load_file(f"data/{prefix}/data_{prefix}_small.safetensors")[key], ["data", "labels"])
 
     X = TensorDataset(X, y)
-    # X = DataLoader(X, batch_size=batch_size, shuffle=True if prefix=="train" else False, num_workers=4, persistent_workers=True)
-    X = DataLoader(X, batch_size=batch_size, shuffle=False, num_workers=4, persistent_workers=True)
+    X = DataLoader(X, batch_size=batch_size, shuffle=True if prefix=="train" else False, num_workers=4, persistent_workers=True)
+    # X = DataLoader(X, batch_size=batch_size, shuffle=False, num_workers=4, persistent_workers=True)
 
     return X

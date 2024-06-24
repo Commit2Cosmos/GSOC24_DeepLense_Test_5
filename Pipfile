@@ -10,6 +10,8 @@ numpy = "*"
 matplotlib = "*"
 lightning = "*"
 tensorboard = "*"
+ray = {extras = ["tune"], version = "*"}
+safetensors = "*"
 
 [dev-packages]
 

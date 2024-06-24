@@ -4,3 +4,4 @@ guide.ipynb
 /lightning_logs
 TODO
 test_*
+/ray_logs
